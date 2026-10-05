@@ -1,0 +1,8 @@
+{
+  "_comment": "WorkBuddy only accepts remote MCP connectors. Start the HTTP transport first (`start-mcp.cmd`, default http://127.0.0.1:9102/mcp), then drop this file at: ~/.workbuddy-ai/connectors-marketplace/connectors/dsh/mcp.json",
+  "mcpServers": {
+    "dsh": {
+      "url": "http://127.0.0.1:9102/mcp"
+    }
+  }
+}

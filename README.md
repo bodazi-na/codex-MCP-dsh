@@ -1,17 +1,29 @@
-# dsh-a2a — DeepSeek Harness as an A2A agent
+# dsh-a2a — DeepSeek Harness as an A2A agent and an MCP server
 
-把本机安装的 **DeepSeek Harness（`dsh`）** 包成一个标准的 **A2A（Agent2Agent）**
-agent：任何会说 A2A 的 orchestrator（WorkBuddy、codex-a2a、自写的客户端、其他框架）
-都能通过 Agent Card 发现它、给它派活，并把执行过程（调了哪个工具、结果如何）
-与最终答复作为 A2A 状态更新和 artifact 收回去。
+把本机安装的 **DeepSeek Harness（`dsh`）** 包成**双协议**服务：
 
-与 `codex-a2a` 的区别：执行体不是 Codex CLI，而是 **本机的 dsh headless profile** ——
-同一个 harness、同一份技能（`~/.dsh/skills`）、同一份记忆与凭据配置。
+- **A2A** —— 任何会说 A2A 的 orchestrator（WorkBuddy、codex-a2a、自写客户端）都能通过
+  Agent Card 发现它、给它派活，并把执行过程与最终答复作为状态更新和 artifact 收回去；
+- **MCP** —— 任何 MCP 客户端（Codex、Claude Desktop、Cursor、Cherry Studio、WorkBuddy…）
+  都能把 DSH 挂成**原生工具**（`dsh_task` / `dsh_status`）。
+
+两种协议共用同一个执行器：`dsh --profile headless --json`，也就是**同一个 harness、
+同一份技能（`~/.dsh/skills`）、同一份记忆与凭据**。
+
+| 想做什么 | 看这里 |
+| --- | --- |
+| 让 Codex 通过 MCP 调用 DSH（含踩坑与排障） | [`docs/codex-mcp-dsh.md`](docs/codex-mcp-dsh.md) |
+| 复制粘贴的客户端配置 | [`examples/`](examples/)（Codex TOML / 通用 stdio / WorkBuddy HTTP） |
+| 双击启动 / 停止 / 查状态 | `start-bg.cmd`、`start-mcp.cmd`、`stop.cmd`、`status.cmd` |
+| 查"谁调过我" | `python scripts\mcp_calls.py` |
+| 契约测试 | `uv run pytest -q`（16 passed，Windows CI 见 `.github/workflows/ci.yml`） |
 
 ```mermaid
 flowchart LR
   O[A2A orchestrator] -->|SendMessage / SendStreamingMessage| S[dsh-a2a]
+  C[MCP client e.g. Codex] -->|dsh_task / dsh_status| M[dsh-mcp facade]
   S -->|dsh --profile headless --json| D[DeepSeek Harness]
+  M -->|同一个执行器| D
   D -->|读/写工作区、调工具、用技能| W[(workspace + ~/.dsh)]
   D -.->|sessionId| S
   S -->|Task / statusUpdate / artifact| O

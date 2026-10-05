@@ -1,0 +1,15 @@
+{
+  "_comment": "Generic stdio configuration for MCP clients (Claude Desktop, Cursor, Cherry Studio, Cline, Windsurf, ...). Replace <DSH_HOME> and <repo>. On Linux/macOS only the Streamable HTTP transport is meaningful, because dsh itself is Windows-only here.",
+  "mcpServers": {
+    "dsh": {
+      "command": "<DSH_HOME>\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe",
+      "args": ["-m", "dsh_a2a.mcp_server"],
+      "env": {
+        "PYTHONPATH": "<repo>\\src;<repo>\\.venv\\Lib\\site-packages;<repo>\\.venv\\Lib\\site-packages\\win32;<repo>\\.venv\\Lib\\site-packages\\win32\\lib",
+        "DSH_A2A_WORKDIR": "<repo>",
+        "DSH_A2A_STATE_DIR": "<repo>\\.dsh-a2a",
+        "DSH_A2A_CALL_LOG": "<repo>\\logs\\mcp_calls.jsonl"
+      }
+    }
+  }
+}

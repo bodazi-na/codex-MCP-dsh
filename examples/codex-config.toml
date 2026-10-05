@@ -1,0 +1,20 @@
+# ~/.codex/config.toml — mount the local DeepSeek Harness (DSH) as an MCP server.
+#
+# Replace <DSH_HOME>, <repo> and the drive letters with your own paths.
+# Everything below is required; see docs/codex-mcp-dsh.md for why.
+
+[mcp_servers.dsh]
+# Interpreter OUTSIDE the repo: a .venv inside the workspace is confined by the
+# DSH Windows sandbox, and its dsh child then cannot write ~/.dsh (EPERM).
+command = '<DSH_HOME>\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+args = ["-m", "dsh_a2a.mcp_server"]
+startup_timeout_sec = 120
+
+[mcp_servers.dsh.env]
+# The runtime interpreter does not have the dsh_a2a package; point it at the
+# checkout. win32 + win32\lib are needed because `mcp` imports pywintypes and
+# PYTHONPATH does not process pywin32's .pth bootstrap.
+PYTHONPATH = '<repo>\src;<repo>\.venv\Lib\site-packages;<repo>\.venv\Lib\site-packages\win32;<repo>\.venv\Lib\site-packages\win32\lib'
+DSH_A2A_WORKDIR = '<repo>'
+DSH_A2A_STATE_DIR = '<repo>\.dsh-a2a'
+DSH_A2A_CALL_LOG = '<repo>\logs\mcp_calls.jsonl'
