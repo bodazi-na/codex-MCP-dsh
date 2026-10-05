@@ -37,7 +37,7 @@ if ((Test-Path $runtimePy) -and (Test-Path $sitePackages)) {
     $env:PYTHONPATH = (Join-Path $root "src") + ";" + $sitePackages + ";" +
         (Join-Path $sitePackages "win32") + ";" + (Join-Path $sitePackages "win32\lib")
     Write-Host "[dsh-a2a] interpreter: $runtimePy (outside the workspace)" -ForegroundColor DarkGray
-    & $runtimePy -m dsh_a2a @Args
+    & $runtimePy -m dsh_mcp @Args
     exit $LASTEXITCODE
 }
 
@@ -45,5 +45,5 @@ if (-not (Test-Path $venvPy)) {
     Write-Error "No interpreter found. Run 'uv sync' first, or set DSH_HOME so the runtime Python can be located."
 }
 Write-Warning "Runtime Python not found; falling back to the workspace venv, which the DSH sandbox confines."
-& $venvPy -m dsh_a2a @Args
+& $venvPy -m dsh_mcp @Args
 exit $LASTEXITCODE

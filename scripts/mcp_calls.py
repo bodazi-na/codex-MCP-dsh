@@ -2,7 +2,7 @@
 """Show recent MCP facade calls from the JSONL call log.
 
 The facade appends one line per tool call (``dsh_task`` / ``dsh_status``) to
-``mcp_calls.jsonl`` — see ``DSH_A2A_CALL_LOG``. This viewer prints them as a
+``mcp_calls.jsonl`` — see ``DSH_MCP_CALL_LOG``. This viewer prints them as a
 table.
 
 Examples:
@@ -26,10 +26,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 def default_log() -> Path:
-    override = os.environ.get("DSH_A2A_CALL_LOG")
+    override = os.environ.get("DSH_MCP_CALL_LOG")
     if override:
         return Path(override)
-    state = os.environ.get("DSH_A2A_STATE_DIR")
+    state = os.environ.get("DSH_MCP_STATE_DIR")
     if state:
         return Path(state) / "mcp_calls.jsonl"
     return Path(__file__).resolve().parents[1] / ".mcp-state" / "mcp_calls.jsonl"

@@ -3,40 +3,40 @@ setlocal EnableExtensions
 title DSH A2A Agent (background)
 call "%~dp0_common.cmd"
 
-if not exist "%DSH_A2A_PY%" (
+if not exist "%DSH_MCP_PY%" (
   echo [x] Interpreter not found:
-  echo     %DSH_A2A_PY%
+  echo     %DSH_MCP_PY%
   echo     Run this once in this folder:  uv sync
   pause
   exit /b 1
 )
 
 rem Already serving? Just open the Agent Card.
-powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:%DSH_A2A_PORT%/healthz' -UseBasicParsing -TimeoutSec 2 > $null; exit 0 } catch { exit 1 }"
+powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:%DSH_MCP_PORT%/healthz' -UseBasicParsing -TimeoutSec 2 > $null; exit 0 } catch { exit 1 }"
 if not errorlevel 1 (
-  echo [i] Already running on port %DSH_A2A_PORT%. Opening the Agent Card.
+  echo [i] Already running on port %DSH_MCP_PORT%. Opening the Agent Card.
   start "" "%CARD_URL%"
   exit /b 0
 )
 
-for /f %%p in ('powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort %DSH_A2A_PORT% -State Listen -ErrorAction SilentlyContinue; if($c){$c[0].OwningProcess}"') do set "OWNER=%%p"
+for /f %%p in ('powershell -NoProfile -Command "$c=Get-NetTCPConnection -LocalPort %DSH_MCP_PORT% -State Listen -ErrorAction SilentlyContinue; if($c){$c[0].OwningProcess}"') do set "OWNER=%%p"
 if defined OWNER (
-  echo [!] Port %DSH_A2A_PORT% is held by unrelated process PID %OWNER%.
-  echo     Run stop.cmd or change DSH_A2A_PORT in config.cmd.
+  echo [!] Port %DSH_MCP_PORT% is held by unrelated process PID %OWNER%.
+  echo     Run stop.cmd or change DSH_MCP_PORT in config.cmd.
   exit /b 1
 )
 
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
-if not exist "%DSH_A2A_WORKDIR%" mkdir "%DSH_A2A_WORKDIR%"
+if not exist "%DSH_MCP_WORKDIR%" mkdir "%DSH_MCP_WORKDIR%"
 
-echo Interpreter: %DSH_A2A_PY%
-powershell -NoProfile -Command "Start-Process -FilePath '%DSH_A2A_PY%' -ArgumentList '-m','dsh_a2a' -WorkingDirectory '%HERE%' -WindowStyle Hidden -RedirectStandardOutput '%LOG_DIR%\server.out.log' -RedirectStandardError '%LOG_DIR%\server.err.log'"
+echo Interpreter: %DSH_MCP_PY%
+powershell -NoProfile -Command "Start-Process -FilePath '%DSH_MCP_PY%' -ArgumentList '-m','dsh_mcp' -WorkingDirectory '%HERE%' -WindowStyle Hidden -RedirectStandardOutput '%LOG_DIR%\server.out.log' -RedirectStandardError '%LOG_DIR%\server.err.log'"
 
-echo Starting DSH A2A Agent on port %DSH_A2A_PORT% ...
+echo Starting DSH A2A Agent on port %DSH_MCP_PORT% ...
 set "READY="
 for /l %%i in (1,1,30) do (
   if not defined READY (
-    powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:%DSH_A2A_PORT%/healthz' -UseBasicParsing -TimeoutSec 2 > $null; exit 0 } catch { exit 1 }"
+    powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:%DSH_MCP_PORT%/healthz' -UseBasicParsing -TimeoutSec 2 > $null; exit 0 } catch { exit 1 }"
     if not errorlevel 1 set "READY=1"
     if not defined READY ping -n 2 127.0.0.1 >nul
   )

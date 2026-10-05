@@ -19,7 +19,7 @@ visibility: "private"
 先确认服务在跑：
 
 ```bash
-python "${CLAUDE_SKILL_DIR}/scripts/dsh_a2a.py" card
+python "${CLAUDE_SKILL_DIR}/scripts/dsh_mcp.py" card
 ```
 
 - 打印出 `agent: DSH A2A Agent …` → 就绪，继续。
@@ -30,13 +30,13 @@ python "${CLAUDE_SKILL_DIR}/scripts/dsh_a2a.py" card
   uv run dsh-a2a
   ```
 
-  若 DSH 侧设了 `DSH_A2A_TOKEN`，本技能也要带同一个 token：加 `--token <token>`
-  或设环境变量 `DSH_A2A_TOKEN`。
+  若 DSH 侧设了 `DSH_MCP_TOKEN`，本技能也要带同一个 token：加 `--token <token>`
+  或设环境变量 `DSH_MCP_TOKEN`。
 
 ## 派活
 
 ```bash
-python "${CLAUDE_SKILL_DIR}/scripts/dsh_a2a.py" send "把任务原文写在这里"
+python "${CLAUDE_SKILL_DIR}/scripts/dsh_mcp.py" send "把任务原文写在这里"
 ```
 
 - 脚本会打印 `task:` / `context:`，流式显示 DSH 的工具调用与文本，最后给
@@ -49,7 +49,7 @@ python "${CLAUDE_SKILL_DIR}/scripts/dsh_a2a.py" send "把任务原文写在这�
 把上一轮打印的 `context:` 带上，DSH 会 resume 同一个会话，保留上文：
 
 ```bash
-python "${CLAUDE_SKILL_DIR}/scripts/dsh_a2a.py" send "基于刚才的结论，给出下一步" --context-id <上一轮的 context>
+python "${CLAUDE_SKILL_DIR}/scripts/dsh_mcp.py" send "基于刚才的结论，给出下一步" --context-id <上一轮的 context>
 ```
 
 `metadata.continuedSession` 为 `true` 且 `dshSessionId` 与上一轮相同时，说明确实续接成功。

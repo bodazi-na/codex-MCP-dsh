@@ -6,7 +6,7 @@
 ## 0. 目标
 
 ```
-Codex  ──MCP(stdio)──▶  dsh_a2a.mcp_server  ──▶  dsh --profile headless  ──▶  真实答复
+Codex  ──MCP(stdio)──▶  dsh_mcp.mcp_server  ──▶  dsh --profile headless  ──▶  真实答复
                                                             │
                                                     每次调用留下一个 DSH 会话
 ```
@@ -20,14 +20,14 @@ Codex 侧只需要一个 `[mcp_servers.dsh]` 配置块；DSH 侧由本项目提�
 ```toml
 [mcp_servers.dsh]
 command = '<DSH_HOME>\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
-args = ["-m", "dsh_a2a.mcp_server"]
+args = ["-m", "dsh_mcp.mcp_server"]
 startup_timeout_sec = 120
 
 [mcp_servers.dsh.env]
 PYTHONPATH = '<repo>\src;<repo>\.venv\Lib\site-packages;<repo>\.venv\Lib\site-packages\win32;<repo>\.venv\Lib\site-packages\win32\lib'
-DSH_A2A_WORKDIR   = '<repo>'
-DSH_A2A_STATE_DIR = '<repo>\.dsh-a2a'
-DSH_A2A_CALL_LOG  = '<repo>\logs\mcp_calls.jsonl'
+DSH_MCP_WORKDIR   = '<repo>'
+DSH_MCP_STATE_DIR = '<repo>\.dsh-a2a'
+DSH_MCP_CALL_LOG  = '<repo>\logs\mcp_calls.jsonl'
 ```
 
 三个关键点，任一缺失都会失败：
@@ -35,7 +35,7 @@ DSH_A2A_CALL_LOG  = '<repo>\logs\mcp_calls.jsonl'
 | 点 | 为什么 |
 | --- | --- |
 | `command` 用**工作区外**的解释器 | 工作区内的 `.venv` 被 DSH 沙箱限制，它派生的 `dsh` 写不了 `~/.dsh`（`EPERM … cordis.yml`） |
-| `env.PYTHONPATH` 必须给 | 运行时 python 里**没有** `dsh_a2a` 这个包（它是仓库源码），缺了 server 启动即 `ModuleNotFoundError` |
+| `env.PYTHONPATH` 必须给 | 运行时 python 里**没有** `dsh_mcp` 这个包（它是仓库源码），缺了 server 启动即 `ModuleNotFoundError` |
 | `PYTHONPATH` 还要带 `win32` 与 `win32\lib` | `mcp` 2.x 在 Windows 上 import `pywintypes`（pywin32），而 pywin32 靠 `.pth` 注入路径——`PYTHONPATH` **不处理 `.pth`** |
 
 ## 2. 失败时的表现（重要）
@@ -50,9 +50,9 @@ DSH_A2A_CALL_LOG  = '<repo>\logs\mcp_calls.jsonl'
 **在干净环境里**原样跑一遍：
 
 ```powershell
-& <运行时 python> -m dsh_a2a.mcp_server --check
+& <运行时 python> -m dsh_mcp.mcp_server --check
 # 期望输出 launcher / profile / workdir / state dir
-# 缺 env 时：ModuleNotFoundError: No module named 'dsh_a2a'
+# 缺 env 时：ModuleNotFoundError: No module named 'dsh_mcp'
 ```
 
 ## 3. 验证调用链
@@ -72,7 +72,7 @@ python scripts\mcp_smoke.py --task "Reply with exactly: MCP-OK"
 
 ## 4. 调用记录在哪查
 
-facade 每次工具调用都会写一行 JSONL（`DSH_A2A_CALL_LOG`，默认 `logs\mcp_calls.jsonl`）：
+facade 每次工具调用都会写一行 JSONL（`DSH_MCP_CALL_LOG`，默认 `logs\mcp_calls.jsonl`）：
 
 ```powershell
 python scripts\mcp_calls.py --all

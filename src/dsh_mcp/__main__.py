@@ -1,4 +1,4 @@
-"""``python -m dsh_a2a`` entry point."""
+"""``python -m dsh_mcp`` entry point."""
 
 from __future__ import annotations
 

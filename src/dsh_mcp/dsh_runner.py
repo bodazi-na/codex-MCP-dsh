@@ -84,7 +84,7 @@ def _hint_for(line: str) -> str:
         return (
             " | dsh could not write its DSH home. Start dsh-a2a from a normal "
             "terminal (not from an agent's sandboxed shell), or set "
-            "DSH_A2A_DSH_HOME to a writable directory."
+            "DSH_MCP_DSH_HOME to a writable directory."
         )
     if "WinError 5" in line:
         return (
@@ -273,7 +273,7 @@ class DshRunner:
         stdout_lines: list[str],
         stderr_text: str,
     ) -> None:
-        """Write one run's raw streams when ``DSH_A2A_DEBUG_DIR`` is configured."""
+        """Write one run's raw streams when ``DSH_MCP_DEBUG_DIR`` is configured."""
         target = self._settings.debug_dir
         if target is None:
             return

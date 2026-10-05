@@ -22,7 +22,7 @@ STUB_SESSION_ID = "session-stub-0001"
 
 
 class StubRunner:
-    """Drop-in replacement for :class:`~dsh_a2a.dsh_runner.DshRunner`."""
+    """Drop-in replacement for :class:`~dsh_mcp.dsh_runner.DshRunner`."""
 
     def __init__(self, session_id: str = STUB_SESSION_ID) -> None:
         self.session_id = session_id

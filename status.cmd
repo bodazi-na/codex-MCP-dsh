@@ -6,14 +6,14 @@ chcp 65001 >nul
 echo ============================================================
 echo   DSH A2A Agent - status
 echo ============================================================
-echo   port      : %DSH_A2A_PORT%
-echo   python    : %DSH_A2A_PY%
+echo   port      : %DSH_MCP_PORT%
+echo   python    : %DSH_MCP_PY%
 echo ============================================================
 
 powershell -NoProfile -Command ^
   "$ErrorActionPreference='Stop';" ^
-  "$base='http://127.0.0.1:%DSH_A2A_PORT%';" ^
-  "try { $h=(Invoke-WebRequest -Uri ($base+'/healthz') -UseBasicParsing -TimeoutSec 3).Content } catch { Write-Host '[x] not running on port %DSH_A2A_PORT%'; exit 1 };" ^
+  "$base='http://127.0.0.1:%DSH_MCP_PORT%';" ^
+  "try { $h=(Invoke-WebRequest -Uri ($base+'/healthz') -UseBasicParsing -TimeoutSec 3).Content } catch { Write-Host '[x] not running on port %DSH_MCP_PORT%'; exit 1 };" ^
   "Write-Host ('health    : ' + $h);" ^
   "try { $card=(Invoke-RestMethod -Uri ($base+'/.well-known/agent-card.json') -TimeoutSec 5); Write-Host ('agent     : ' + $card.name + ' v' + $card.version); Write-Host ('skills    : ' + (($card.skills | ForEach-Object { $_.id }) -join ', ')) } catch { Write-Host 'agent card: unavailable' };" ^
   "$headers=@{'A2A-Version'='1.0'};" ^

@@ -52,7 +52,7 @@ flowchart LR
 | **真实会话续接** | 同 `contextId` 连发两轮 | 首轮「记住 7391」→ 次轮「那个数字是多少」→ 答复 **7391**，状态显示 `resuming session session-2a75a35a…`、`turn 2 started`，metadata `continuedSession=true` |
 
 **真机验证是怎么做的**：桥接与 dsh 子进程都必须跑在**无沙箱**环境，而本会话自身在 DSH 的
-Windows 沙箱里。验证时用了一条提权命令启动桥接，并把 `DSH_A2A_DSH_HOME` 指向工作区内的
+Windows 沙箱里。验证时用了一条提权命令启动桥接，并把 `DSH_MCP_DSH_HOME` 指向工作区内的
 临时 DSH home（沙箱组的 ACE 让受限子进程无法写 `~/.dsh`；工作区内可写）。你平时在自己终端
 里跑不需要这些：普通终端没有沙箱，直接用默认 `~/.dsh` 即可。
 
@@ -94,7 +94,7 @@ uv sync
 
 # 3) 启动（默认 http://127.0.0.1:9101）
 .\run.ps1
-# 可选鉴权：先 $env:DSH_A2A_TOKEN="choose-a-token" 再启动
+# 可选鉴权：先 $env:DSH_MCP_TOKEN="choose-a-token" 再启动
 ```
 
 > **为什么用 `.\run.ps1` 而不是 `uv run dsh-a2a`**：`.venv` 建在工作区里，而
@@ -152,7 +152,7 @@ WorkBuddy 通过**技能**（`~/.workbuddy-ai/skills/<name>/`）扩展，本仓�
 ```
 workbuddy-skill/
   SKILL.md                 技能说明（含触发场景、前置检查、用法）
-  scripts/dsh_a2a.py       A2A 客户端（仅标准库，任意 Python 3 可跑）
+  scripts/dsh_mcp.py       A2A 客户端（仅标准库，任意 Python 3 可跑）
 ```
 
 安装（已在本机装好，源文件保留在仓库里便于更新）：
@@ -160,7 +160,7 @@ workbuddy-skill/
 ```powershell
 Copy-Item D:\DS-harness\.dsh-a2a\workbuddy-skill\SKILL.md `
           C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\ -Force
-Copy-Item D:\DS-harness\.dsh-a2a\workbuddy-skill\scripts\dsh_a2a.py `
+Copy-Item D:\DS-harness\.dsh-a2a\workbuddy-skill\scripts\dsh_mcp.py `
           C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\ -Force
 ```
 
@@ -169,10 +169,10 @@ Copy-Item D:\DS-harness\.dsh-a2a\workbuddy-skill\scripts\dsh_a2a.py `
 ```powershell
 # 1) 普通终端里启动桥接（用你真实的 ~/.dsh：技能、记忆、凭据都在）
 cd D:\DS-harness\.dsh-a2a
-uv run dsh-a2a                       # 若设了 token：$env:DSH_A2A_TOKEN="…" 后再启动
+uv run dsh-a2a                       # 若设了 token：$env:DSH_MCP_TOKEN="…" 后再启动
 
 # 2) WorkBuddy 侧：直接说「让 DSH 做 …」，它会读技能并执行下面这条
-python "C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\dsh_a2a.py" send "你的任务"
+python "C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\dsh_mcp.py" send "你的任务"
 ```
 
 两条命令各有用途：`card` 先确认连通，`send "…" --context-id <ctx>` 续接上一轮会话。
@@ -181,7 +181,7 @@ python "C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\dsh_a2a.py" send "�
 
 > 桥接必须能写它使用的 DSH home。在**普通终端**启动时就是你真实的 `~/.dsh`；
 > 若从 DSH 会话内部启动（子进程继承沙箱受限令牌，`~/.dsh` 只读），需要把
-> `DSH_A2A_DSH_HOME` 指到可写目录——这条路径也已验证通过。
+> `DSH_MCP_DSH_HOME` 指到可写目录——这条路径也已验证通过。
 
 ### 同时暴露为 MCP（工具面见下节）
 
@@ -207,7 +207,7 @@ python "C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\dsh_a2a.py" send "�
 ```jsonc
 {"mcpServers": {"dsh": {
   "command": "<DSH_HOME>\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe",
-  "args": ["-m", "dsh_a2a.mcp_server"],
+  "args": ["-m", "dsh_mcp.mcp_server"],
   "env": {"PYTHONPATH": "<项目>\\src;<项目>\\.venv\\Lib\\site-packages;<项目>\\.venv\\Lib\\site-packages\\win32;<项目>\\.venv\\Lib\\site-packages\\win32\\lib"}
 }}}
 ```
@@ -235,7 +235,7 @@ python scripts\mcp_smoke.py --http http://127.0.0.1:9102/mcp --task "…"  # htt
 ### 调用记录（审计）
 
 facade 每次工具调用都会往 **JSONL 调用日志**追加一行（时间、工具、耗时、会话、退出码、
-提示词预览、用量），路径由 `DSH_A2A_CALL_LOG` 决定，未设置时落在状态目录的
+提示词预览、用量），路径由 `DSH_MCP_CALL_LOG` 决定，未设置时落在状态目录的
 `mcp_calls.jsonl`；`_common.cmd` 把它默认设到 `logs\mcp_calls.jsonl`。
 
 ```powershell
@@ -249,8 +249,8 @@ python scripts\mcp_calls.py --all --json # 全部原始记录
 每次 `dsh_task` 还会在 `$DSH_HOME\sessions` 留下一个真实会话目录。
 
 **Codex 接入注意**：它的 `[mcp_servers.dsh]` 必须带 `[mcp_servers.dsh.env]`，
-至少给 `PYTHONPATH`（运行时 python 里没有 `dsh_a2a`，缺了会启动失败、模型看不到工具），
-建议同时给 `DSH_A2A_WORKDIR` / `DSH_A2A_STATE_DIR` / `DSH_A2A_CALL_LOG`。
+至少给 `PYTHONPATH`（运行时 python 里没有 `dsh_mcp`，缺了会启动失败、模型看不到工具），
+建议同时给 `DSH_MCP_WORKDIR` / `DSH_MCP_STATE_DIR` / `DSH_MCP_CALL_LOG`。
 
 ## 协议映射
 
@@ -272,33 +272,33 @@ python scripts\mcp_calls.py --all --json # 全部原始记录
 
 ## 配置项
 
-全部通过 `DSH_A2A_*` 环境变量控制：
+全部通过 `DSH_MCP_*` 环境变量控制：
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `DSH_A2A_WORKDIR` | 当前目录 | dsh 的工作区，也是子进程 cwd |
-| `DSH_A2A_HOST` / `DSH_A2A_PORT` | `127.0.0.1` / `9101` | 监听地址 |
-| `DSH_A2A_PUBLIC_URL` | `http://host:port` | 写进 Agent Card 的对外地址（反代后要改） |
-| `DSH_A2A_DSH_BIN` | 自动探测 | dsh 启动器（`dsh.cmd` 全路径） |
-| `DSH_A2A_DSH_HOME` | 继承 `DSH_HOME` | dsh 的配置/技能/凭据目录，默认 `~/.dsh` |
-| `DSH_A2A_PROFILE` | `headless` | 要 boot 的 profile |
-| `DSH_A2A_TIMEOUT_SECONDS` | `1800` | 单轮超时，超时杀进程并置 FAILED |
-| `DSH_A2A_TOKEN` | 未设置 | 设置后启用 Bearer 鉴权（Agent Card 除外） |
-| `DSH_A2A_MAX_CONCURRENCY` | `2` | 同时运行几个 dsh 进程 |
-| `DSH_A2A_STATE_DIR` | `<workdir>/.dsh-a2a` | `sessions.json`（contextId → sessionId）落盘位置 |
-| `DSH_A2A_V0_3_COMPAT` | `true` | 同一端点兼容 A2A 0.3 客户端（`message/send`） |
-| `DSH_A2A_EXTRA_ARGS` | 空 | 追加给 launcher 的参数 |
-| `DSH_A2A_DEBUG_DIR` | 未设置 | 设置后每次运行把启动命令、退出码与原始 stdout/stderr 落盘（排查用） |
+| `DSH_MCP_WORKDIR` | 当前目录 | dsh 的工作区，也是子进程 cwd |
+| `DSH_MCP_HOST` / `DSH_MCP_PORT` | `127.0.0.1` / `9101` | 监听地址 |
+| `DSH_MCP_PUBLIC_URL` | `http://host:port` | 写进 Agent Card 的对外地址（反代后要改） |
+| `DSH_MCP_DSH_BIN` | 自动探测 | dsh 启动器（`dsh.cmd` 全路径） |
+| `DSH_MCP_DSH_HOME` | 继承 `DSH_HOME` | dsh 的配置/技能/凭据目录，默认 `~/.dsh` |
+| `DSH_MCP_PROFILE` | `headless` | 要 boot 的 profile |
+| `DSH_MCP_TIMEOUT_SECONDS` | `1800` | 单轮超时，超时杀进程并置 FAILED |
+| `DSH_MCP_TOKEN` | 未设置 | 设置后启用 Bearer 鉴权（Agent Card 除外） |
+| `DSH_MCP_MAX_CONCURRENCY` | `2` | 同时运行几个 dsh 进程 |
+| `DSH_MCP_STATE_DIR` | `<workdir>/.dsh-a2a` | `sessions.json`（contextId → sessionId）落盘位置 |
+| `DSH_MCP_V0_3_COMPAT` | `true` | 同一端点兼容 A2A 0.3 客户端（`message/send`） |
+| `DSH_MCP_EXTRA_ARGS` | 空 | 追加给 launcher 的参数 |
+| `DSH_MCP_DEBUG_DIR` | 未设置 | 设置后每次运行把启动命令、退出码与原始 stdout/stderr 落盘（排查用） |
 
 ## 排障
 
 | 症状 | 原因与处理 |
 | --- | --- |
-| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | **根因：解释器被限制**。工作区内的 `.venv` 解释器受 DSH 沙箱约束，它派生的 `dsh` 子进程写不了工作区外的 `~/.dsh`。用 `.\run.ps1` 启动（工作区外的 DSH 运行时 Python + 工作区 site-packages），或把桥接跑在普通终端并用工作区外的解释器；也可让 `DSH_A2A_DSH_HOME` 指向可写目录 |
+| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | **根因：解释器被限制**。工作区内的 `.venv` 解释器受 DSH 沙箱约束，它派生的 `dsh` 子进程写不了工作区外的 `~/.dsh`。用 `.\run.ps1` 启动（工作区外的 DSH 运行时 Python + 工作区 site-packages），或把桥接跑在普通终端并用工作区外的解释器；也可让 `DSH_MCP_DSH_HOME` 指向可写目录 |
 | 调用方只看到 `DSH could not finish the task: Node.js v24.18.1` | v1.0.0 之前只回传 stderr 最后一行（Node 崩溃尾巴），信息量为零。升级后同一场景直接给出 `Error: EPERM … cordis.yml` 与修复建议；也可先用 `.\run.ps1 --check`，看 `profile boot` 一行提前发现 |
 | 任务 `FAILED`，消息含 `could not start … piped stdio: WinError 5` | 同上：沙箱禁止子进程重叠命名管道。必须在无沙箱环境运行 |
 | stderr 出现 `spill-local … EPERM mkdtemp …Temp\dsh-spill-XXXXXX`（`1 entry did not activate`） | 受限子进程不能写系统 TEMP；把 `TEMP`/`TMP` 指向工作区可消除该警告（不影响任务结果） |
-| `Could not find a working dsh launcher` | 桌面应用未安装 CLI，或 shim 指向旧安装目录；用 `DSH_A2A_DSH_BIN` 指向 `…\resources\runtime\cli\bin\dsh.cmd` |
+| `Could not find a working dsh launcher` | 桌面应用未安装 CLI，或 shim 指向旧安装目录；用 `DSH_MCP_DSH_BIN` 指向 `…\resources\runtime\cli\bin\dsh.cmd` |
 
 dsh 自身的模型、provider、凭据来自 `$DSH_HOME`（`config`/`.credentials.yaml`），
 本项目不做任何凭据处理。
@@ -306,7 +306,7 @@ dsh 自身的模型、provider、凭据来自 `$DSH_HOME`（`config`/`.credentia
 ## 目录结构
 
 ```
-src/dsh_a2a/
+src/dsh_mcp/
   config.py         环境变量与 dsh 启动器探测（含 --version 探针）
   agent_card.py     Agent Card（supportedInterfaces / skills / 可选 bearer 声明）
   dsh_runner.py     子进程 + NDJSON 事件解析、用量累加、超时、取消
@@ -324,7 +324,7 @@ tools/asar-extract.js  从 app.asar 里取 DSH 内部文档/入口（升级后�
 
 - **任务存储是内存态**：重启后 `GetTask` 查不到历史任务（`sessions.json` 只保证会话续接）。
 - **一次一个任务**：dsh headless 每次处理一个任务后退出；多步工作要拆成多次调用。
-- **续接受 cwd 与 preset 约束**：`--session-id` 会拒绝记录在其它工作目录、或属于 subagent/fork 的 session，因此 `DSH_A2A_WORKDIR` 不要随意改。
+- **续接受 cwd 与 preset 约束**：`--session-id` 会拒绝记录在其它工作目录、或属于 subagent/fork 的 session，因此 `DSH_MCP_WORKDIR` 不要随意改。
 - **取消是尽力而为**：`tasks/cancel` 会终止 dsh 子进程，已经写入的文件改动不会回滚。
 - **并发共享同一 `DSH_HOME`**：多个任务同时跑会共用技能与凭据目录；`max_concurrency` 默认 2。
 - **没有 push notification**：`pushNotifications: false`，长任务请用 SSE 或轮询。

@@ -36,14 +36,14 @@ def _text(result) -> str:
 async def run(args: argparse.Namespace) -> int:
     environment = {k: v for k, v in os.environ.items() if v is not None}
     if args.workdir:
-        environment["DSH_A2A_WORKDIR"] = args.workdir
+        environment["DSH_MCP_WORKDIR"] = args.workdir
 
     if args.http:
         return await run_http(args)
 
     params = StdioServerParameters(
         command=args.server_python,
-        args=["-m", "dsh_a2a.mcp_server"],
+        args=["-m", "dsh_mcp.mcp_server"],
         env=environment,
     )
 
@@ -96,7 +96,7 @@ def main() -> int:
         help="connect over streamable-http instead of spawning a stdio server "
         "(e.g. http://127.0.0.1:9102/mcp)",
     )
-    parser.add_argument("--workdir", default=None, help="override DSH_A2A_WORKDIR")
+    parser.add_argument("--workdir", default=None, help="override DSH_MCP_WORKDIR")
     parser.add_argument(
         "--server-python",
         default=sys.executable,

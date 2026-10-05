@@ -1,14 +1,14 @@
 """Expose the local DeepSeek Harness as an MCP server.
 
-This is the mirror image of :mod:`dsh_a2a.app`: A2A is how other *agents* call
+This is the mirror image of :mod:`dsh_mcp.app`: A2A is how other *agents* call
 DSH; MCP is how other *clients* (WorkBuddy, Codex, Claude Code, Cursor, Cherry
-Studio, …) mount DSH as a native tool. Both share :mod:`dsh_a2a.dsh_runner`, so
+Studio, …) mount DSH as a native tool. Both share :mod:`dsh_mcp.dsh_runner`, so
 a task runs through exactly one code path.
 
 Transports:
 
-    python -m dsh_a2a.mcp_server                 # stdio (most clients)
-    python -m dsh_a2a.mcp_server --http          # streamable-http on /mcp
+    python -m dsh_mcp.mcp_server                 # stdio (most clients)
+    python -m dsh_mcp.mcp_server --http          # streamable-http on /mcp
 
 Tool surface is deliberately tiny — every tool schema is paid for on every
 turn: ``dsh_task`` (run one task) and ``dsh_status`` (diagnose the wiring).
@@ -59,7 +59,7 @@ def _record_call(settings: Settings, record: dict[str, Any]) -> None:
     """Append one JSONL line to the call log.
 
     The log exists so callers can be audited after the fact: which tool ran,
-    when, for how long, with which session, and how it ended. ``DSH_A2A_CALL_LOG``
+    when, for how long, with which session, and how it ended. ``DSH_MCP_CALL_LOG``
     pins the path; otherwise it follows the bridge's state directory. Logging
     never fails a call.
     """

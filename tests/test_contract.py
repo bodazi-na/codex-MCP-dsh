@@ -23,11 +23,11 @@ from pathlib import Path
 import httpx
 import pytest
 
-from dsh_a2a.agent_card import SKILL_DSH_TASK, build_agent_card
-from dsh_a2a.app import build_app
-from dsh_a2a.config import Settings, resolve_dsh_binary, shell_command
-from dsh_a2a.dsh_runner import DshRunError, DshRunResult, DshRunner, diagnose_stderr
-from dsh_a2a.stub_runner import STUB_SESSION_ID, StubRunner
+from dsh_mcp.agent_card import SKILL_DSH_TASK, build_agent_card
+from dsh_mcp.app import build_app
+from dsh_mcp.config import Settings, resolve_dsh_binary, shell_command
+from dsh_mcp.dsh_runner import DshRunError, DshRunResult, DshRunner, diagnose_stderr
+from dsh_mcp.stub_runner import STUB_SESSION_ID, StubRunner
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE = ROOT / "scripts" / "fake_dsh.py"
@@ -185,7 +185,7 @@ def test_diagnose_stderr_prefers_the_real_error() -> None:
     message = diagnose_stderr(dump, 1)
     assert "EPERM" in message
     assert "cordis.yml" in message
-    assert "DSH_A2A_DSH_HOME" in message
+    assert "DSH_MCP_DSH_HOME" in message
     assert not message.startswith("Node.js")
 
 
@@ -356,7 +356,7 @@ def _mcp_text(result) -> str:
 
 def test_mcp_exposes_only_two_tools(workdir: Path, fake_bin: str) -> None:
     """Every tool schema costs context on every turn; keep the surface tiny."""
-    from dsh_a2a.mcp_server import build_server
+    from dsh_mcp.mcp_server import build_server
 
     server = build_server(make_settings(workdir, fake_bin))
     tools = asyncio.run(server.list_tools())
@@ -367,7 +367,7 @@ def test_mcp_exposes_only_two_tools(workdir: Path, fake_bin: str) -> None:
 
 
 def test_mcp_status_reports_resolved_config(workdir: Path, fake_bin: str) -> None:
-    from dsh_a2a.mcp_server import build_server
+    from dsh_mcp.mcp_server import build_server
 
     settings = make_settings(workdir, fake_bin)
     server = build_server(settings)
@@ -384,7 +384,7 @@ def test_mcp_task_runs_the_shared_runner(workdir: Path, fake_bin: str) -> None:
     """`dsh_task` drives the same runner the A2A side uses (fake launcher here)."""
     if not stdio_available(fake_bin):
         pytest.skip("sandbox blocks piped subprocess stdio")
-    from dsh_a2a.mcp_server import build_server
+    from dsh_mcp.mcp_server import build_server
 
     server = build_server(make_settings(workdir, fake_bin))
     result = asyncio.run(

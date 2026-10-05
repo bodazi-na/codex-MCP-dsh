@@ -1,7 +1,7 @@
 [project]
-name = "dsh-a2a"
+name = "codex-mcp-dsh"
 version = "0.1.0"
-description = "Serve DeepSeek Harness (dsh) as an Agent2Agent (A2A) agent"
+description = "Call the local DeepSeek Harness (dsh) from Codex over MCP; also serves it over A2A"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,8 +11,8 @@ dependencies = [
 ]
 
 [project.scripts]
-dsh-a2a = "dsh_a2a:main"
-dsh-mcp = "dsh_a2a.mcp_server:main"
+dsh-a2a = "dsh_mcp:main"
+dsh-mcp = "dsh_mcp.mcp_server:main"
 
 [dependency-groups]
 dev = [
@@ -22,6 +22,12 @@ dev = [
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
+
+# The distribution is named for the repo (codex-mcp-dsh); the import package
+# stays short (dsh_mcp), so the module name is declared explicitly.
+[tool.uv.build-backend]
+module-name = "dsh_mcp"
+module-root = "src"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

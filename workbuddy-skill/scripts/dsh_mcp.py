@@ -6,11 +6,11 @@ plain urllib client is enough — this works under any Python 3, no matter which
 interpreter WorkBuddy hands the skill.
 
 Examples:
-    python dsh_a2a.py card
-    python dsh_a2a.py send "用一句话说明 D:\\DS-harness 是做什么的"
-    python dsh_a2a.py send "继续上一个话题" --context-id <ctx> --wait
-    python dsh_a2a.py wait --task-id <id>
-    python dsh_a2a.py send "..." --json          # machine-readable result
+    python dsh_mcp.py card
+    python dsh_mcp.py send "用一句话说明 D:\\DS-harness 是做什么的"
+    python dsh_mcp.py send "继续上一个话题" --context-id <ctx> --wait
+    python dsh_mcp.py wait --task-id <id>
+    python dsh_mcp.py send "..." --json          # machine-readable result
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ import uuid
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-DEFAULT_URL = os.environ.get("DSH_A2A_URL", "http://127.0.0.1:9101")
+DEFAULT_URL = os.environ.get("DSH_MCP_URL", "http://127.0.0.1:9101")
 TERMINAL = {
     "TASK_STATE_COMPLETED",
     "TASK_STATE_FAILED",
@@ -178,7 +178,7 @@ def main() -> int:
     parser.add_argument("action", choices=["card", "send", "wait"], nargs="?", default="card")
     parser.add_argument("prompt", nargs="?", help="task text for `send`")
     parser.add_argument("--url", default=DEFAULT_URL)
-    parser.add_argument("--token", default=os.environ.get("DSH_A2A_TOKEN"))
+    parser.add_argument("--token", default=os.environ.get("DSH_MCP_TOKEN"))
     parser.add_argument("--context-id", default=None, help="resume this A2A context")
     parser.add_argument("--task-id", default=None, help="for `wait`")
     parser.add_argument("--timeout", type=float, default=1800.0)

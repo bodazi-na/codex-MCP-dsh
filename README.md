@@ -6,7 +6,7 @@
 
 ```mermaid
 flowchart LR
-  C[Codex] -->|MCP stdio: dsh_task / dsh_status| M[dsh_a2a.mcp_server]
+  C[Codex] -->|MCP stdio: dsh_task / dsh_status| M[dsh_mcp.mcp_server]
   M -->|dsh --profile headless --json| D[DeepSeek Harness]
   D -->|读/写工作区、调工具、用技能| W[(workspace + ~/.dsh)]
   D -.->|sessionId（可续接）| M
@@ -36,14 +36,14 @@ python scripts\mcp_smoke.py --task "Reply with exactly: MCP-OK"   # 命令行验
 ```toml
 [mcp_servers.dsh]
 command = '<DSH_HOME>\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
-args = ["-m", "dsh_a2a.mcp_server"]
+args = ["-m", "dsh_mcp.mcp_server"]
 startup_timeout_sec = 120
 
 [mcp_servers.dsh.env]
 PYTHONPATH = '<repo>\src;<repo>\.venv\Lib\site-packages;<repo>\.venv\Lib\site-packages\win32;<repo>\.venv\Lib\site-packages\win32\lib'
-DSH_A2A_WORKDIR = '<repo>'
-DSH_A2A_STATE_DIR = '<repo>\.dsh-a2a'
-DSH_A2A_CALL_LOG = '<repo>\logs\mcp_calls.jsonl'
+DSH_MCP_WORKDIR = '<repo>'
+DSH_MCP_STATE_DIR = '<repo>\.dsh-a2a'
+DSH_MCP_CALL_LOG = '<repo>\logs\mcp_calls.jsonl'
 ```
 
 改完 Codex 的配置**要重启 Codex** 才生效。
@@ -62,7 +62,7 @@ DSH_A2A_CALL_LOG = '<repo>\logs\mcp_calls.jsonl'
 | 点 | 缺了会怎样 |
 | --- | --- |
 | `command` 用**工作区外**的解释器 | 工作区内的 `.venv` 受 Windows 沙箱限制，它派生的 `dsh` 写不了 `~/.dsh` → `EPERM … cordis.yml`，每次任务都失败 |
-| `env.PYTHONPATH` | 运行时解释器里没有 `dsh_a2a` 这个包（它是本仓库源码）→ server 启动即 `ModuleNotFoundError: No module named 'dsh_a2a'` |
+| `env.PYTHONPATH` | 运行时解释器里没有 `dsh_mcp` 这个包（它是本仓库源码）→ server 启动即 `ModuleNotFoundError: No module named 'dsh_mcp'` |
 | `PYTHONPATH` 里带 `win32` 与 `win32\lib` | `mcp` 2.x 在 Windows 上 import `pywintypes`（pywin32），而 pywin32 靠 `.pth` 注入路径——`PYTHONPATH` 不处理 `.pth` → `No module named 'pywintypes'` |
 
 ## 排障：失败长什么样
@@ -73,22 +73,22 @@ DSH_A2A_CALL_LOG = '<repo>\logs\mcp_calls.jsonl'
 诊断第一条命令：
 
 ```powershell
-& '<DSH_HOME>\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe' -m dsh_a2a.mcp_server --check
+& '<DSH_HOME>\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe' -m dsh_mcp.mcp_server --check
 # 正常：打印 launcher / profile / workdir / state dir
 ```
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
 | 模型看不到 `dsh_status` / 只有空 resources | 配置缺 `env`，server 启动即崩 | 补 `[mcp_servers.dsh.env]`，见上；用 `--check` 复现 |
-| `ModuleNotFoundError: No module named 'dsh_a2a'` | 解释器里没装本仓库源码 | `PYTHONPATH` 加 `<repo>\src` |
+| `ModuleNotFoundError: No module named 'dsh_mcp'` | 解释器里没装本仓库源码 | `PYTHONPATH` 加 `<repo>\src` |
 | `No module named 'pywintypes'` | 少了 pywin32 的两个目录 | `PYTHONPATH` 加 `…\site-packages\win32;…\site-packages\win32\lib` |
-| `EPERM … .dsh\profiles\…\cordis.yml` | 解释器在工作区内（沙箱限制） | 换工作区外的解释器（如上），或把 `DSH_A2A_DSH_HOME` 指到可写目录 |
+| `EPERM … .dsh\profiles\…\cordis.yml` | 解释器在工作区内（沙箱限制） | 换工作区外的解释器（如上），或把 `DSH_MCP_DSH_HOME` 指到可写目录 |
 | `could not start … piped stdio: WinError 5` | 在沙箱里跑 | 在普通终端里跑 |
 | 改完配置没反应 | MCP server 在 Codex 启动时拉起 | 重启 Codex |
 
 ## 调用记录（审计"谁调过我"）
 
-每次工具调用都会追加一行 JSONL（`DSH_A2A_CALL_LOG`，默认 `logs\mcp_calls.jsonl`）：
+每次工具调用都会追加一行 JSONL（`DSH_MCP_CALL_LOG`，默认 `logs\mcp_calls.jsonl`）：
 
 ```powershell
 python scripts\mcp_calls.py --all
@@ -108,7 +108,7 @@ when (local)         tool        ok         ms  session                prompt
 ## 目录结构（MCP 相关）
 
 ```
-src/dsh_a2a/
+src/dsh_mcp/
   mcp_server.py     MCP server：两个工具 + 调用审计（stdio / streamable-http）
   dsh_runner.py     执行 `dsh --profile headless --json`，解析事件、超时、取消
   config.py         环境变量、launcher 探测（自动跳过失效 shim）

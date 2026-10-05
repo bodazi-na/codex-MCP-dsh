@@ -1,6 +1,6 @@
 """Runtime configuration for the DSH -> A2A bridge.
 
-Everything is driven by ``DSH_A2A_*`` environment variables so the server can be
+Everything is driven by ``DSH_MCP_*`` environment variables so the server can be
 started from a shell, a scheduled task, or an orchestrator without editing code.
 """
 
@@ -77,7 +77,7 @@ def default_dsh_candidates() -> list[str]:
 
     app_dirs = [
         os.environ.get("DSH_APP_DIR"),
-        os.environ.get("DSH_A2A_DSH_APP_DIR"),
+        os.environ.get("DSH_MCP_DSH_APP_DIR"),
         "D:\\DSH",
         r"C:\Program Files\DSH",
         r"C:\Program Files (x86)\DSH",
@@ -100,7 +100,7 @@ def default_dsh_candidates() -> list[str]:
 def resolve_dsh_binary(explicit: str | None = None) -> str:
     """Find a dsh launcher that actually runs on this machine."""
     candidates: list[str] = []
-    for value in (explicit, _env("DSH_A2A_DSH_BIN"), _env("DSH_BIN")):
+    for value in (explicit, _env("DSH_MCP_DSH_BIN"), _env("DSH_BIN")):
         if value:
             candidates.append(value)
     candidates.extend(default_dsh_candidates())
@@ -117,7 +117,7 @@ def resolve_dsh_binary(explicit: str | None = None) -> str:
             return resolved
 
     raise RuntimeError(
-        "Could not find a working dsh launcher. Set DSH_A2A_DSH_BIN to the full "
+        "Could not find a working dsh launcher. Set DSH_MCP_DSH_BIN to the full "
         r"path of dsh.cmd (for example D:\DSH\resources\runtime\cli\bin\dsh.cmd) "
         "and try again."
     )
@@ -155,22 +155,22 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        host = _env("DSH_A2A_HOST", "127.0.0.1") or "127.0.0.1"
-        port = int(_env("DSH_A2A_PORT", "9101") or "9101")
-        public_url = _env("DSH_A2A_PUBLIC_URL") or f"http://{host}:{port}"
+        host = _env("DSH_MCP_HOST", "127.0.0.1") or "127.0.0.1"
+        port = int(_env("DSH_MCP_PORT", "9101") or "9101")
+        public_url = _env("DSH_MCP_PUBLIC_URL") or f"http://{host}:{port}"
 
-        workdir = Path(_env("DSH_A2A_WORKDIR") or os.getcwd()).expanduser()
+        workdir = Path(_env("DSH_MCP_WORKDIR") or os.getcwd()).expanduser()
         workdir.mkdir(parents=True, exist_ok=True)
         state_dir = Path(
-            _env("DSH_A2A_STATE_DIR") or str(workdir / ".dsh-a2a")
+            _env("DSH_MCP_STATE_DIR") or str(workdir / ".dsh-a2a")
         ).expanduser()
         state_dir.mkdir(parents=True, exist_ok=True)
 
-        dsh_home = _env("DSH_A2A_DSH_HOME") or _env("DSH_HOME")
-        debug_dir_raw = _env("DSH_A2A_DEBUG_DIR")
-        call_log_raw = _env("DSH_A2A_CALL_LOG")
+        dsh_home = _env("DSH_MCP_DSH_HOME") or _env("DSH_HOME")
+        debug_dir_raw = _env("DSH_MCP_DEBUG_DIR")
+        call_log_raw = _env("DSH_MCP_CALL_LOG")
         extra_args = tuple(
-            part for part in (_env("DSH_A2A_EXTRA_ARGS") or "").split() if part
+            part for part in (_env("DSH_MCP_EXTRA_ARGS") or "").split() if part
         )
 
         return cls(
@@ -181,17 +181,17 @@ class Settings:
             state_dir=state_dir,
             dsh_bin=resolve_dsh_binary(),
             dsh_home=dsh_home,
-            profile=_env("DSH_A2A_PROFILE", "headless") or "headless",
+            profile=_env("DSH_MCP_PROFILE", "headless") or "headless",
             timeout_seconds=float(
-                _env("DSH_A2A_TIMEOUT_SECONDS", "1800") or "1800"
+                _env("DSH_MCP_TIMEOUT_SECONDS", "1800") or "1800"
             ),
-            token=_env("DSH_A2A_TOKEN"),
-            max_concurrency=int(_env("DSH_A2A_MAX_CONCURRENCY", "2") or "2"),
-            enable_v0_3_compat=_env_flag("DSH_A2A_V0_3_COMPAT", True),
+            token=_env("DSH_MCP_TOKEN"),
+            max_concurrency=int(_env("DSH_MCP_MAX_CONCURRENCY", "2") or "2"),
+            enable_v0_3_compat=_env_flag("DSH_MCP_V0_3_COMPAT", True),
             extra_args=extra_args,
             debug_dir=Path(debug_dir_raw).expanduser() if debug_dir_raw else None,
             call_log=Path(call_log_raw).expanduser() if call_log_raw else None,
-            agent_name=_env("DSH_A2A_AGENT_NAME", "DSH A2A Agent")
+            agent_name=_env("DSH_MCP_AGENT_NAME", "DSH A2A Agent")
             or "DSH A2A Agent",
-            agent_version=_env("DSH_A2A_AGENT_VERSION", "0.1.0") or "0.1.0",
+            agent_version=_env("DSH_MCP_AGENT_VERSION", "0.1.0") or "0.1.0",
         )
