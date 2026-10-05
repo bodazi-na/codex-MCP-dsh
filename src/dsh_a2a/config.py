@@ -140,6 +140,7 @@ class Settings:
     max_concurrency: int = 2
     enable_v0_3_compat: bool = True
     extra_args: tuple[str, ...] = ()
+    debug_dir: Path | None = None
     agent_name: str = "DSH A2A Agent"
     agent_version: str = "0.1.0"
 
@@ -165,6 +166,7 @@ class Settings:
         state_dir.mkdir(parents=True, exist_ok=True)
 
         dsh_home = _env("DSH_A2A_DSH_HOME") or _env("DSH_HOME")
+        debug_dir_raw = _env("DSH_A2A_DEBUG_DIR")
         extra_args = tuple(
             part for part in (_env("DSH_A2A_EXTRA_ARGS") or "").split() if part
         )
@@ -185,6 +187,7 @@ class Settings:
             max_concurrency=int(_env("DSH_A2A_MAX_CONCURRENCY", "2") or "2"),
             enable_v0_3_compat=_env_flag("DSH_A2A_V0_3_COMPAT", True),
             extra_args=extra_args,
+            debug_dir=Path(debug_dir_raw).expanduser() if debug_dir_raw else None,
             agent_name=_env("DSH_A2A_AGENT_NAME", "DSH A2A Agent")
             or "DSH A2A Agent",
             agent_version=_env("DSH_A2A_AGENT_VERSION", "0.1.0") or "0.1.0",

@@ -22,3 +22,6 @@ wheels/
 ref/
 pytest-cache-files-*/
 home/
+verify-home/
+.debug/
+.real-state/

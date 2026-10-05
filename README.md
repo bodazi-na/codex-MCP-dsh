@@ -31,18 +31,20 @@ flowchart LR
 | 会话续接 | 同一 `contextId` 第二次调用 | 状态消息显示 `resuming session session-stub-0001`，artifact metadata `continuedSession=true`、`dshSessionId` 与首轮一致，`sessions.json` 落盘 |
 | 失败映射 | 契约测试（runner 抛错） | `TASK_STATE_FAILED`，消息带失败原因 |
 | 事件解析 | `tests/test_contract.py` | 8 passed / 3 skipped（见下） |
+| **真实模型任务** | 外部 A2A 客户端 → 桥接 → `dsh --profile headless` | `TASK_STATE_COMPLETED`，`artifact dsh-response = PONG`，真实用量 7,688 token，真实 `dshSessionId` |
+| **真实会话续接** | 同 `contextId` 连发两轮 | 首轮「记住 7391」→ 次轮「那个数字是多少」→ 答复 **7391**，状态显示 `resuming session session-2a75a35a…`、`turn 2 started`，metadata `continuedSession=true` |
 
-**尚未在真机验证的一步**：真正跑一次模型任务（`dsh --profile headless` 真执行）。
-原因：DSH 的 Windows 沙箱禁止子进程使用重叠命名管道（`WinError 5`），并禁止写
-`~/.dsh`，而这一步两者都需要。请在你的普通终端里跑：
+**真机验证是怎么做的**：桥接与 dsh 子进程都必须跑在**无沙箱**环境，而本会话自身在 DSH 的
+Windows 沙箱里。验证时用了一条提权命令启动桥接，并把 `DSH_A2A_DSH_HOME` 指向工作区内的
+临时 DSH home（沙箱组的 ACE 让受限子进程无法写 `~/.dsh`；工作区内可写）。你平时在自己终端
+里跑不需要这些：普通终端没有沙箱，直接用默认 `~/.dsh` 即可。
 
 ```powershell
-cd D:\DS-harness\.dsh-a2a
-uv run pytest -q                      # 3 个被沙箱跳过的用例会真正跑起来
-uv run dsh-a2a --once "用一句话说明这个目录是做什么的"
+# 运维者常用入口
+uv run dsh-a2a --check        # 探测启动器 / profile / 工作区 / 鉴权
+uv run dsh-a2a --once "ping"  # 不经过 A2A，直接验证 dsh 这一侧
+uv run dsh-a2a --stub         # 假执行体，验证 A2A 客户端接线（零 token 成本）
 ```
-
-`--once` 正常时应打印 dsh 的答复，并在 stderr 给出 `[session session-… exit 0]`。
 
 ## 快速开始
 
@@ -137,6 +139,16 @@ uv run python scripts\a2a_smoke.py "刚才那个结论有什么风险？" --cont
 | `DSH_A2A_STATE_DIR` | `<workdir>/.dsh-a2a` | `sessions.json`（contextId → sessionId）落盘位置 |
 | `DSH_A2A_V0_3_COMPAT` | `true` | 同一端点兼容 A2A 0.3 客户端（`message/send`） |
 | `DSH_A2A_EXTRA_ARGS` | 空 | 追加给 launcher 的参数 |
+| `DSH_A2A_DEBUG_DIR` | 未设置 | 设置后每次运行把启动命令、退出码与原始 stdout/stderr 落盘（排查用） |
+
+## 排障
+
+| 症状 | 原因与处理 |
+| --- | --- |
+| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | 桥接或 dsh 子进程被 DSH/Codex 的 Windows 沙箱限制（`~/.dsh` 上有 `CodexSandboxUsers: ReadAndExecute`）。把桥接跑在普通终端，或让 `DSH_A2A_DSH_HOME` 指向可写的 DSH home |
+| 任务 `FAILED`，消息含 `could not start … piped stdio: WinError 5` | 同上：沙箱禁止子进程重叠命名管道。必须在无沙箱环境运行 |
+| stderr 出现 `spill-local … EPERM mkdtemp …Temp\dsh-spill-XXXXXX`（`1 entry did not activate`） | 受限子进程不能写系统 TEMP；把 `TEMP`/`TMP` 指向工作区可消除该警告（不影响任务结果） |
+| `Could not find a working dsh launcher` | 桌面应用未安装 CLI，或 shim 指向旧安装目录；用 `DSH_A2A_DSH_BIN` 指向 `…\resources\runtime\cli\bin\dsh.cmd` |
 
 dsh 自身的模型、provider、凭据来自 `$DSH_HOME`（`config`/`.credentials.yaml`），
 本项目不做任何凭据处理。

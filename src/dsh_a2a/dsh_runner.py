@@ -18,7 +18,9 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, Awaitable, Callable
+from uuid import uuid4
 
 from .config import Settings, shell_command
 
@@ -120,7 +122,7 @@ class DshRunner:
             self._processes[task_id] = process
             try:
                 return await asyncio.wait_for(
-                    self._consume(process, prompt, on_event),
+                    self._consume(process, prompt, on_event, command),
                     timeout=self._settings.timeout_seconds,
                 )
             except asyncio.TimeoutError as exc:
@@ -137,6 +139,7 @@ class DshRunner:
         process: asyncio.subprocess.Process,
         prompt: str,
         on_event: EventCallback | None,
+        command: list[str],
     ) -> DshRunResult:
         assert process.stdin is not None
         assert process.stdout is not None
@@ -157,6 +160,7 @@ class DshRunner:
 
         stderr_task = asyncio.create_task(drain_stderr())
         result = DshRunResult()
+        stdout_lines: list[str] = []
 
         while True:
             line = await process.stdout.readline()
@@ -165,6 +169,7 @@ class DshRunner:
             text = line.decode("utf-8", errors="replace").strip()
             if not text:
                 continue
+            stdout_lines.append(text)
             if not text.startswith("{"):
                 # The launcher may print plain diagnostics on stdout.
                 logger.debug("ignoring non-JSON stdout line: %s", text[:200])
@@ -182,7 +187,9 @@ class DshRunner:
         result.exit_code = await process.wait()
         with contextlib.suppress(asyncio.CancelledError):
             await stderr_task
-        result.stderr_tail = "".join(stderr_chunks)[-4000:]
+        stderr_text = "".join(stderr_chunks)
+        result.stderr_tail = stderr_text[-4000:]
+        self._dump_debug(command, result, stdout_lines, stderr_text)
 
         if result.exit_code not in (0, None):
             detail = [line for line in result.stderr_tail.splitlines() if line.strip()]
@@ -210,6 +217,48 @@ class DshRunner:
             usage = event.get("usage")
             if isinstance(usage, dict):
                 result.usage = _add_usage(result.usage, usage)
+
+    # ---------------------------------------------------------------- debug
+    def _dump_debug(
+        self,
+        command: list[str],
+        result: DshRunResult,
+        stdout_lines: list[str],
+        stderr_text: str,
+    ) -> None:
+        """Write one run's raw streams when ``DSH_A2A_DEBUG_DIR`` is configured."""
+        target = self._settings.debug_dir
+        if target is None:
+            return
+        try:
+            target.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+            path = target / f"run-{stamp}-{uuid4().hex[:8]}.log"
+            env = self._environment()
+            interesting = {
+                key: env.get(key)
+                for key in ("DSH_HOME", "TEMP", "TMP", "PATH", "NO_COLOR")
+                if key in env
+            }
+            interesting["PATH"] = (interesting.get("PATH") or "")[:600]
+            path.write_text(
+                "\n".join(
+                    [
+                        f"command: {command}",
+                        f"cwd: {self._settings.workdir}",
+                        f"exit: {result.exit_code}",
+                        f"env: {json.dumps(interesting, ensure_ascii=False)}",
+                        "--- stdout ---",
+                        *stdout_lines,
+                        "--- stderr ---",
+                        stderr_text,
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+        except OSError as error:  # pragma: no cover - diagnostics must not fail a run
+            logger.warning("could not write debug dump: %s", error)
 
     # --------------------------------------------------------------- cancel
     async def cancel(self, task_id: str) -> bool:
