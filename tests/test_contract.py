@@ -26,7 +26,7 @@ import pytest
 from dsh_a2a.agent_card import SKILL_DSH_TASK, build_agent_card
 from dsh_a2a.app import build_app
 from dsh_a2a.config import Settings, resolve_dsh_binary, shell_command
-from dsh_a2a.dsh_runner import DshRunError, DshRunResult, DshRunner
+from dsh_a2a.dsh_runner import DshRunError, DshRunResult, DshRunner, diagnose_stderr
 from dsh_a2a.stub_runner import STUB_SESSION_ID, StubRunner
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -169,6 +169,28 @@ def test_runner_reports_failure(workdir: Path, fake_bin: str) -> None:
     with pytest.raises(DshRunError) as excinfo:
         asyncio.run(runner.run("please fail now", task_id="t2"))
     assert "simulated failure" in str(excinfo.value)
+
+
+def test_diagnose_stderr_prefers_the_real_error() -> None:
+    """A Node crash dump must not surface as a bare version banner."""
+    dump = (
+        "node:fs:2422\n"
+        "    return binding.writeFileUtf8(\n"
+        "Error: EPERM: operation not permitted, open "
+        "'C:\\Users\\x\\.dsh\\profiles\\headless\\cordis.yml'\n"
+        "    at writeFileSync (node:fs:2422:20)\n"
+        "\n"
+        "Node.js v24.18.1\n"
+    )
+    message = diagnose_stderr(dump, 1)
+    assert "EPERM" in message
+    assert "cordis.yml" in message
+    assert "DSH_A2A_DSH_HOME" in message
+    assert not message.startswith("Node.js")
+
+
+def test_diagnose_stderr_without_detail() -> None:
+    assert diagnose_stderr("", 3) == "dsh exited with 3"
 
 
 def test_absorb_sums_usage() -> None:

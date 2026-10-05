@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 
 from .app import agent_card_json, build_app
@@ -28,7 +29,51 @@ def _cmd_check(settings: Settings) -> int:
     print(f"auth         : {'bearer token set' if settings.token else 'disabled'}")
     print(f"concurrency  : {settings.max_concurrency}")
     print(f"timeout      : {settings.timeout_seconds:.0f}s")
-    return 0
+    return _probe_profile_boot(settings)
+
+
+def _probe_profile_boot(settings: Settings) -> int:
+    """Boot the profile once (``--help``) so unwritable-homе failures surface now.
+
+    Composing a profile rewrites ``<home>/profiles/<name>/cordis.yml`` on every
+    boot, so this catches the sandbox case where the launcher runs but cannot
+    write its own home — before a caller sends a real task.
+    """
+    import subprocess
+
+    from .config import shell_command
+    from .dsh_runner import diagnose_stderr
+
+    environment = {k: v for k, v in os.environ.items() if v is not None}
+    if settings.dsh_home:
+        environment["DSH_HOME"] = settings.dsh_home
+    environment.setdefault("DSH_TELEMETRY_DISABLED", "1")
+
+    try:
+        completed = subprocess.run(
+            shell_command(settings.dsh_bin, ["--profile", settings.profile, "--help"]),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
+            check=False,
+            cwd=str(settings.workdir),
+            env=environment,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"profile boot : FAILED — could not start the launcher: {error}")
+        return 1
+
+    if completed.returncode == 0:
+        print("profile boot : OK")
+        return 0
+
+    print(
+        "profile boot : FAILED — "
+        + diagnose_stderr(completed.stderr + completed.stdout, completed.returncode)
+    )
+    return 1
 
 
 def _cmd_once(settings: Settings, task: str, as_json: bool) -> int:

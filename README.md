@@ -190,7 +190,8 @@ MCP facade（stdio 或 streamable-http）包住同一个 executor —— 尚未�
 
 | 症状 | 原因与处理 |
 | --- | --- |
-| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | 桥接或 dsh 子进程被 DSH/Codex 的 Windows 沙箱限制（`~/.dsh` 上有 `CodexSandboxUsers: ReadAndExecute`）。把桥接跑在普通终端，或让 `DSH_A2A_DSH_HOME` 指向可写的 DSH home |
+| 调用方只看到 `DSH could not finish the task: Node.js v24.18.1` | v1.0.0 之前只回传 stderr 最后一行（Node 崩溃尾巴），信息量为零。升级后同一场景直接给出 `Error: EPERM … cordis.yml` 与修复建议；也可先用 `uv run dsh-a2a --check`，看 `profile boot` 一行提前发现 |
+| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | 桥接或 dsh 子进程被 DSH/Codex 的 Windows 沙箱限制（`~/.dsh` 上有 `CodexSandboxUsers: ReadAndExecute`）。**最常见触发方式：让 agent（WorkBuddy / Codex / DSH）用自己的 shell 启动桥接**——子进程继承受限令牌。请在**你自己的普通终端**启动，或让 `DSH_A2A_DSH_HOME` 指向可写的 DSH home |
 | 任务 `FAILED`，消息含 `could not start … piped stdio: WinError 5` | 同上：沙箱禁止子进程重叠命名管道。必须在无沙箱环境运行 |
 | stderr 出现 `spill-local … EPERM mkdtemp …Temp\dsh-spill-XXXXXX`（`1 entry did not activate`） | 受限子进程不能写系统 TEMP；把 `TEMP`/`TMP` 指向工作区可消除该警告（不影响任务结果） |
 | `Could not find a working dsh launcher` | 桌面应用未安装 CLI，或 shim 指向旧安装目录；用 `DSH_A2A_DSH_BIN` 指向 `…\resources\runtime\cli\bin\dsh.cmd` |

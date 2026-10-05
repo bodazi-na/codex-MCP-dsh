@@ -42,6 +42,58 @@ class DshRunError(RuntimeError):
     """Raised when the DSH headless run fails to finish a task."""
 
 
+_FAILURE_MARKERS = ("EPERM", "EACCES", "ENOENT", "WinError", "EADDRINUSE", "MODULE_NOT_FOUND")
+
+
+def diagnose_stderr(text: str, exit_code: int | None) -> str:
+    """Turn a crashed child's stderr into one actionable line.
+
+    A Node crash dump ends with a bare ``Node.js v24.18.1`` banner, which tells
+    a caller nothing; the real reason sits a few lines above it.
+    """
+    lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    if not lines:
+        return f"dsh exited with {exit_code}"
+
+    chosen = next(
+        (line for line in lines if any(marker in line for marker in _FAILURE_MARKERS)),
+        None,
+    )
+    if chosen is None:
+        chosen = next(
+            (
+                line
+                for line in lines
+                if line.startswith(
+                    ("Error", "error", "fatal", "TypeError", "ReferenceError", "SyntaxError")
+                )
+            ),
+            None,
+        )
+    if chosen is None:
+        chosen = lines[-1]
+
+    message = chosen if len(chosen) <= 400 else chosen[:399] + "…"
+    hint = _hint_for(chosen)
+    return f"{message}{hint}"
+
+
+def _hint_for(line: str) -> str:
+    """Append the fix for the two sandbox-shaped failures we know about."""
+    if "EPERM" in line or "EACCES" in line:
+        return (
+            " | dsh could not write its DSH home. Start dsh-a2a from a normal "
+            "terminal (not from an agent's sandboxed shell), or set "
+            "DSH_A2A_DSH_HOME to a writable directory."
+        )
+    if "WinError 5" in line:
+        return (
+            " | the sandbox denied the child's pipes. Run dsh-a2a outside the "
+            "sandbox."
+        )
+    return ""
+
+
 @dataclass
 class DshRunResult:
     """Outcome of a single headless run."""
@@ -192,12 +244,7 @@ class DshRunner:
         self._dump_debug(command, result, stdout_lines, stderr_text)
 
         if result.exit_code not in (0, None):
-            detail = [line for line in result.stderr_tail.splitlines() if line.strip()]
-            raise DshRunError(
-                detail[-1].strip()
-                if detail
-                else f"dsh exited with {result.exit_code}"
-            )
+            raise DshRunError(diagnose_stderr(stderr_text, result.exit_code))
         return result
 
     @staticmethod
