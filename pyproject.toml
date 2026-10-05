@@ -1,0 +1,26 @@
+[project]
+name = "dsh-a2a"
+version = "0.1.0"
+description = "Serve DeepSeek Harness (dsh) as an Agent2Agent (A2A) agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "a2a-sdk[http-server]>=1.2.1",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+dsh-a2a = "dsh_a2a:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"

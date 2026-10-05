@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Bridge runtime state (session map, logs)
+.dsh-a2a/
+
+# Test / tooling scratch
+.test-runs/
+.uv-cache/
+.tmp/
+.wire-state/
+
+# Reference material extracted from the DSH app bundle (not ours to publish)
+ref/
+pytest-cache-files-*/
+home/
