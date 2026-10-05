@@ -25,3 +25,4 @@ home/
 verify-home/
 .debug/
 .real-state/
+.wb-state/

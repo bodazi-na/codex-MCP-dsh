@@ -54,13 +54,20 @@ cd D:\DS-harness\.dsh-a2a
 # 1) 依赖（uv 建虚拟环境并锁定版本）
 uv sync
 
-# 2) 看一眼探测到的配置（启动器、profile、工作区、鉴权）
-uv run dsh-a2a --check
+# 2) 看一眼探测到的配置 + profile 预检（启动器、profile、工作区、鉴权）
+.\run.ps1 --check
 
 # 3) 启动（默认 http://127.0.0.1:9101）
-$env:DSH_A2A_TOKEN = "choose-a-token"      # 可选：不设则本机免鉴权
-uv run dsh-a2a
+.\run.ps1
+# 可选鉴权：先 $env:DSH_A2A_TOKEN="choose-a-token" 再启动
 ```
+
+> **为什么用 `.\run.ps1` 而不是 `uv run dsh-a2a`**：`.venv` 建在工作区里，而
+> **工作区内的解释器被 DSH 的 Windows 沙箱限制**——由它派生的 `dsh` 子进程写不了
+> `~/.dsh/profiles/headless/cordis.yml`，每次调用都会 `EPERM` 失败（无论你在自己终端
+> 还是让 agent 启动）。`run.ps1` 改用工作区外的 DSH 运行时 Python + 工作区内的
+> site-packages（`PYTHONPATH`），实测 `profile boot : OK` 且真机任务通过。
+> 若你的机器没有 DSH 运行时，脚本会自动回落到 venv（此时请把桥接跑在普通终端）。
 
 检查 Agent Card：
 
@@ -190,8 +197,8 @@ MCP facade（stdio 或 streamable-http）包住同一个 executor —— 尚未�
 
 | 症状 | 原因与处理 |
 | --- | --- |
-| 调用方只看到 `DSH could not finish the task: Node.js v24.18.1` | v1.0.0 之前只回传 stderr 最后一行（Node 崩溃尾巴），信息量为零。升级后同一场景直接给出 `Error: EPERM … cordis.yml` 与修复建议；也可先用 `uv run dsh-a2a --check`，看 `profile boot` 一行提前发现 |
-| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | 桥接或 dsh 子进程被 DSH/Codex 的 Windows 沙箱限制（`~/.dsh` 上有 `CodexSandboxUsers: ReadAndExecute`）。**最常见触发方式：让 agent（WorkBuddy / Codex / DSH）用自己的 shell 启动桥接**——子进程继承受限令牌。请在**你自己的普通终端**启动，或让 `DSH_A2A_DSH_HOME` 指向可写的 DSH home |
+| 任务 `FAILED`，消息含 `EPERM … ~/.dsh/profiles/…/cordis.yml` | **根因：解释器被限制**。工作区内的 `.venv` 解释器受 DSH 沙箱约束，它派生的 `dsh` 子进程写不了工作区外的 `~/.dsh`。用 `.\run.ps1` 启动（工作区外的 DSH 运行时 Python + 工作区 site-packages），或把桥接跑在普通终端并用工作区外的解释器；也可让 `DSH_A2A_DSH_HOME` 指向可写目录 |
+| 调用方只看到 `DSH could not finish the task: Node.js v24.18.1` | v1.0.0 之前只回传 stderr 最后一行（Node 崩溃尾巴），信息量为零。升级后同一场景直接给出 `Error: EPERM … cordis.yml` 与修复建议；也可先用 `.\run.ps1 --check`，看 `profile boot` 一行提前发现 |
 | 任务 `FAILED`，消息含 `could not start … piped stdio: WinError 5` | 同上：沙箱禁止子进程重叠命名管道。必须在无沙箱环境运行 |
 | stderr 出现 `spill-local … EPERM mkdtemp …Temp\dsh-spill-XXXXXX`（`1 entry did not activate`） | 受限子进程不能写系统 TEMP；把 `TEMP`/`TMP` 指向工作区可消除该警告（不影响任务结果） |
 | `Could not find a working dsh launcher` | 桌面应用未安装 CLI，或 shim 指向旧安装目录；用 `DSH_A2A_DSH_BIN` 指向 `…\resources\runtime\cli\bin\dsh.cmd` |
