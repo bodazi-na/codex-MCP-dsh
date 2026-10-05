@@ -1,15 +1,25 @@
 @echo off
 rem ============================================================
-rem  DSH A2A Agent - settings
-rem  Edit this file, then double-click start-bg.cmd
+rem  codex-mcp-dsh - settings
+rem  Edit this file, then double-click start-bg.cmd (A2A bridge)
+rem  or start-mcp.cmd (MCP over streamable-http)
 rem ============================================================
 
 rem Workspace dsh is allowed to work in (also the child process cwd).
 set "DSH_MCP_WORKDIR=D:\DS-harness\.dsh-a2a"
 
-rem Listen address. 127.0.0.1 = this machine only, 0.0.0.0 = reachable from LAN.
+rem Default host for both services.
 set "DSH_MCP_HOST=127.0.0.1"
+
+rem --- A2A bridge (start-bg.cmd / start.cmd / status.cmd / stop.cmd) ---------
+rem Port the A2A agent card + JSON-RPC listen on.
 set "DSH_MCP_PORT=9101"
+
+rem --- MCP over streamable-http (start-mcp.cmd) ------------------------------
+rem Its own names on purpose: sharing DSH_MCP_PORT with the A2A bridge would make
+rem the two services fight over one port.
+set "DSH_MCP_HTTP_HOST=127.0.0.1"
+set "DSH_MCP_HTTP_PORT=9102"
 
 rem Public URL advertised in the Agent Card. Leave empty to derive from host:port.
 set "DSH_MCP_PUBLIC_URL="
