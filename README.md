@@ -215,6 +215,26 @@ python scripts\mcp_smoke.py --task "Reply with exactly: MCP-OK"          # stdio
 python scripts\mcp_smoke.py --http http://127.0.0.1:9102/mcp --task "…"  # http  → MCP-HTTP-OK
 ```
 
+### 调用记录（审计）
+
+facade 每次工具调用都会往 **JSONL 调用日志**追加一行（时间、工具、耗时、会话、退出码、
+提示词预览、用量），路径由 `DSH_A2A_CALL_LOG` 决定，未设置时落在状态目录的
+`mcp_calls.jsonl`；`_common.cmd` 把它默认设到 `logs\mcp_calls.jsonl`。
+
+```powershell
+python scripts\mcp_calls.py              # 最近 20 次调用（本地时区表格）
+python scripts\mcp_calls.py --all --json # 全部原始记录
+```
+
+排查"某个客户端到底有没有调到我"时，先看这张表；客户端侧还有各自的历史
+（Codex 的 `~/.codex/sessions/**/rollout-*.jsonl`、WorkBuddy 的
+`~/.workbuddy-ai/logs/mcp-apps-diag.log` 与 `audit-log\*.jsonl`），
+每次 `dsh_task` 还会在 `$DSH_HOME\sessions` 留下一个真实会话目录。
+
+**Codex 接入注意**：它的 `[mcp_servers.dsh]` 必须带 `[mcp_servers.dsh.env]`，
+至少给 `PYTHONPATH`（运行时 python 里没有 `dsh_a2a`，缺了会启动失败、模型看不到工具），
+建议同时给 `DSH_A2A_WORKDIR` / `DSH_A2A_STATE_DIR` / `DSH_A2A_CALL_LOG`。
+
 ## 协议映射
 
 `dsh --profile headless --json` 的事件（见 `@deepseek-ai/dsh-headless`

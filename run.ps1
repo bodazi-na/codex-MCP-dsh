@@ -31,7 +31,11 @@ $venvPy = Join-Path $root ".venv\Scripts\python.exe"
 $sitePackages = Join-Path $root ".venv\Lib\site-packages"
 
 if ((Test-Path $runtimePy) -and (Test-Path $sitePackages)) {
-    $env:PYTHONPATH = (Join-Path $root "src") + ";" + $sitePackages
+    # win32 / win32\lib are required: `mcp` 2.x imports `pywintypes` on Windows,
+    # and pywin32 exposes it only through its .pth bootstrap, which PYTHONPATH
+    # entries do not process.
+    $env:PYTHONPATH = (Join-Path $root "src") + ";" + $sitePackages + ";" +
+        (Join-Path $sitePackages "win32") + ";" + (Join-Path $sitePackages "win32\lib")
     Write-Host "[dsh-a2a] interpreter: $runtimePy (outside the workspace)" -ForegroundColor DarkGray
     & $runtimePy -m dsh_a2a @Args
     exit $LASTEXITCODE

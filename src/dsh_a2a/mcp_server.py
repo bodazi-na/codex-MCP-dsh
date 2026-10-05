@@ -22,6 +22,8 @@ import json
 import logging
 import os
 import sys
+import time
+from datetime import UTC, datetime
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -51,6 +53,24 @@ INSTRUCTIONS = (
     "resolved, plus whether the profile boots; call it first when a task fails "
     "with an environment error."
 )
+
+
+def _record_call(settings: Settings, record: dict[str, Any]) -> None:
+    """Append one JSONL line to the call log.
+
+    The log exists so callers can be audited after the fact: which tool ran,
+    when, for how long, with which session, and how it ended. ``DSH_A2A_CALL_LOG``
+    pins the path; otherwise it follows the bridge's state directory. Logging
+    never fails a call.
+    """
+    path = settings.call_log or (settings.state_dir / "mcp_calls.jsonl")
+    record.setdefault("ts", datetime.now(UTC).isoformat(timespec="seconds"))
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as error:  # pragma: no cover - diagnostics must not fail a call
+        logger.warning("could not append to the MCP call log: %s", error)
 
 
 def build_server(settings: Settings) -> MCPServer:
@@ -87,6 +107,7 @@ def build_server(settings: Settings) -> MCPServer:
 
         task_id = f"mcp-{os.getpid()}-{abs(hash(prompt)) % 10_000_000}"
         active = DshRunner(effective) if effective is not settings else runner
+        started = time.monotonic()
         try:
             result = await active.run(
                 prompt,
@@ -94,12 +115,42 @@ def build_server(settings: Settings) -> MCPServer:
                 resume_session_id=session_id,
             )
         except DshRunError as error:
+            _record_call(
+                settings,
+                {
+                    "tool": "dsh_task",
+                    "task_id": task_id,
+                    "ok": False,
+                    "error": str(error),
+                    "prompt_preview": prompt.strip()[:200],
+                    "prompt_chars": len(prompt),
+                    "requested_session": session_id,
+                    "duration_ms": int((time.monotonic() - started) * 1000),
+                },
+            )
             raise RuntimeError(f"dsh could not finish the task: {error}") from error
 
         if result.session_id:
             sessions.set("mcp-last", result.session_id)
 
         answer = result.summary or "(dsh returned no text for this run.)"
+        _record_call(
+            settings,
+            {
+                "tool": "dsh_task",
+                "task_id": task_id,
+                "ok": True,
+                "requested_session": session_id,
+                "session_id": result.session_id,
+                "continued_session": bool(session_id),
+                "exit_code": result.exit_code,
+                "duration_ms": int((time.monotonic() - started) * 1000),
+                "prompt_preview": prompt.strip()[:200],
+                "prompt_chars": len(prompt),
+                "answer_chars": len(answer),
+                "usage": result.usage,
+            },
+        )
         if not json_output:
             return answer
         return json.dumps(
@@ -136,6 +187,16 @@ def build_server(settings: Settings) -> MCPServer:
         }
         if probe_boot:
             payload["profile_boot"] = await _probe_profile(settings)
+        _record_call(
+            settings,
+            {
+                "tool": "dsh_status",
+                "ok": True,
+                "probe_boot": probe_boot,
+                "profile_boot": payload.get("profile_boot"),
+                "launcher": settings.dsh_bin,
+            },
+        )
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
     return server

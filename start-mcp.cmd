@@ -9,7 +9,10 @@ rem Clients point at:  http://<host>:<port>/mcp
 rem
 rem The stdio transport needs no launcher: configure the client with
 rem   command = <python>  args = ["-m", "dsh_a2a.mcp_server"]
-rem and set PYTHONPATH to "<this folder>\src;<this folder>\.venv\Lib\site-packages".
+rem and set PYTHONPATH to "<this folder>\src;<this folder>\.venv\Lib\site-packages"
+rem plus the pywin32 dirs "<this folder>\.venv\Lib\site-packages\win32" and
+rem "...\site-packages\win32\lib" (mcp 2.x imports pywintypes on Windows and
+rem PYTHONPATH does not process .pth files).
 
 if not defined DSH_MCP_PORT set "DSH_MCP_PORT=9102"
 if not defined DSH_MCP_HOST set "DSH_MCP_HOST=127.0.0.1"
