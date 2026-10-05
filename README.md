@@ -103,6 +103,51 @@ uv run python scripts\a2a_smoke.py "刚才那个结论有什么风险？" --cont
 }
 ```
 
+## 让 WorkBuddy 调用 DSH
+
+WorkBuddy 通过**技能**（`~/.workbuddy-ai/skills/<name>/`）扩展，本仓库带一份现成的：
+
+```
+workbuddy-skill/
+  SKILL.md                 技能说明（含触发场景、前置检查、用法）
+  scripts/dsh_a2a.py       A2A 客户端（仅标准库，任意 Python 3 可跑）
+```
+
+安装（已在本机装好，源文件保留在仓库里便于更新）：
+
+```powershell
+Copy-Item D:\DS-harness\.dsh-a2a\workbuddy-skill\SKILL.md `
+          C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\ -Force
+Copy-Item D:\DS-harness\.dsh-a2a\workbuddy-skill\scripts\dsh_a2a.py `
+          C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\ -Force
+```
+
+**使用**（先确保桥接在跑）：
+
+```powershell
+# 1) 普通终端里启动桥接（用你真实的 ~/.dsh：技能、记忆、凭据都在）
+cd D:\DS-harness\.dsh-a2a
+uv run dsh-a2a                       # 若设了 token：$env:DSH_A2A_TOKEN="…" 后再启动
+
+# 2) WorkBuddy 侧：直接说「让 DSH 做 …」，它会读技能并执行下面这条
+python "C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\dsh_a2a.py" send "你的任务"
+```
+
+两条命令各有用途：`card` 先确认连通，`send "…" --context-id <ctx>` 续接上一轮会话。
+
+**已验证**（WorkBuddy 自带的 a2a 环境解释器实测）：第一轮 `Remember the code 4482. Reply with exactly: SAVED` → `SAVED`；第二轮同 `contextId` 问「那个 code 是多少」→ 答 **4482**，状态显示 `turn 2 started`、会话为 `session-4b030533…`（`· 续接`）。
+
+> 桥接必须能写它使用的 DSH home。在**普通终端**启动时就是你真实的 `~/.dsh`；
+> 若从 DSH 会话内部启动（子进程继承沙箱受限令牌，`~/.dsh` 只读），需要把
+> `DSH_A2A_DSH_HOME` 指到可写目录——这条路径也已验证通过。
+
+### 备选：把 DSH 变成 WorkBuddy 的原生 MCP 工具
+
+WorkBuddy 支持远端 MCP 连接器（`mcp.json` 形如
+`{"mcpServers": {"dsh": {"url": "http://…/mcp"}}}`）。`dsh-a2a` 目前只说 A2A，
+若要让它出现在 WorkBuddy 的工具列表里（模型直接调用，而不是写脚本），需要再加一层
+MCP facade（stdio 或 streamable-http）包住同一个 executor —— 尚未实现。
+
 ## 协议映射
 
 `dsh --profile headless --json` 的事件（见 `@deepseek-ai/dsh-headless`
