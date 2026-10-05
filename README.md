@@ -46,6 +46,24 @@ uv run dsh-a2a --once "ping"  # 不经过 A2A，直接验证 dsh 这一侧
 uv run dsh-a2a --stub         # 假执行体，验证 A2A 客户端接线（零 token 成本）
 ```
 
+## 脚本族（双击即可，推荐）
+
+| 脚本 | 用途 |
+| --- | --- |
+| **`start-bg.cmd`** | 后台启动：自动等健康检查、打印 Agent Card、用浏览器打开卡片；已在跑则只打开卡片 |
+| `start.cmd` | 前台运行（看实时日志，Ctrl+C 停） |
+| `stop.cmd` | 停掉占用该端口的实例 |
+| `status.cmd` | 健康检查 + Agent Card + 任务列表 |
+| `config.cmd` | 改端口 / 工作区 / token / profile / dsh launcher / 解释器 |
+| `_common.cmd` | 共享引导：默认值、卡片地址，以及**解释器解析**（见下） |
+
+`_common.cmd` 会自动选解释器：优先用工作区外的 DSH 运行时 Python
+（`%DSH_HOME%\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe`）+ 工作区
+`src`／site-packages 走 `PYTHONPATH`；找不到才回落到 `.venv`。这一步不是可选项——
+工作区内的 `.venv` 解释器受沙箱限制，用它起的 `dsh` 写不了 `~/.dsh`，任务必然 `EPERM`。
+
+日志在 `logs\server.out.log`、`logs\server.err.log`。
+
 ## 快速开始
 
 ```powershell
