@@ -27,3 +27,4 @@ verify-home/
 .real-state/
 .wb-state/
 logs/
+sessions.json
