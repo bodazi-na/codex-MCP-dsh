@@ -347,3 +347,51 @@ def test_failed_run_marks_task_failed(workdir: Path, fake_bin: str) -> None:
     assert task["status"]["state"] == "TASK_STATE_FAILED"
     message = json.dumps(task["status"].get("message") or {}, ensure_ascii=False)
     assert "simulated failure" in message
+
+
+# ------------------------------------------------------------------ MCP facade
+def _mcp_text(result) -> str:
+    return "\n".join(getattr(item, "text", "") for item in result.content)
+
+
+def test_mcp_exposes_only_two_tools(workdir: Path, fake_bin: str) -> None:
+    """Every tool schema costs context on every turn; keep the surface tiny."""
+    from dsh_a2a.mcp_server import build_server
+
+    server = build_server(make_settings(workdir, fake_bin))
+    tools = asyncio.run(server.list_tools())
+    assert sorted(tool.name for tool in tools) == [
+        "dsh_status",
+        "dsh_task",
+    ]
+
+
+def test_mcp_status_reports_resolved_config(workdir: Path, fake_bin: str) -> None:
+    from dsh_a2a.mcp_server import build_server
+
+    settings = make_settings(workdir, fake_bin)
+    server = build_server(settings)
+    result = asyncio.run(server.call_tool("dsh_status", {"probe_boot": False}))
+    payload = json.loads(_mcp_text(result))
+    assert payload["launcher"] == fake_bin
+    assert payload["profile"] == "headless"
+    assert payload["workdir"] == str(workdir)
+    assert payload["state_dir"] == str(settings.state_dir)
+    assert "profile_boot" not in payload
+
+
+def test_mcp_task_runs_the_shared_runner(workdir: Path, fake_bin: str) -> None:
+    """`dsh_task` drives the same runner the A2A side uses (fake launcher here)."""
+    if not stdio_available(fake_bin):
+        pytest.skip("sandbox blocks piped subprocess stdio")
+    from dsh_a2a.mcp_server import build_server
+
+    server = build_server(make_settings(workdir, fake_bin))
+    result = asyncio.run(
+        server.call_tool("dsh_task", {"prompt": "hello mcp", "json_output": True})
+    )
+    payload = json.loads(_mcp_text(result))
+    assert payload["answer"] == "echo: hello mcp"
+    assert payload["exit_code"] == 0
+    assert payload["session_id"].startswith("session-")
+    assert payload["usage"] == {"inputTokens": 10, "outputTokens": 5}

@@ -6,11 +6,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "a2a-sdk[http-server]>=1.2.1",
+    "mcp>=1.0",
     "uvicorn>=0.30",
 ]
 
 [project.scripts]
 dsh-a2a = "dsh_a2a:main"
+dsh-mcp = "dsh_a2a.mcp_server:main"
 
 [dependency-groups]
 dev = [

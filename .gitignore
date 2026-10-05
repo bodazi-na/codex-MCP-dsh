@@ -28,3 +28,4 @@ verify-home/
 .wb-state/
 logs/
 sessions.json
+.mcp-state/

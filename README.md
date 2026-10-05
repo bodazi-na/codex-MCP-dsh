@@ -166,12 +166,54 @@ python "C:\Users\a1299\.workbuddy-ai\skills\dsh-a2a\scripts\dsh_a2a.py" send "�
 > 若从 DSH 会话内部启动（子进程继承沙箱受限令牌，`~/.dsh` 只读），需要把
 > `DSH_A2A_DSH_HOME` 指到可写目录——这条路径也已验证通过。
 
-### 备选：把 DSH 变成 WorkBuddy 的原生 MCP 工具
+### 同时暴露为 MCP（工具面见下节）
 
-WorkBuddy 支持远端 MCP 连接器（`mcp.json` 形如
-`{"mcpServers": {"dsh": {"url": "http://…/mcp"}}}`）。`dsh-a2a` 目前只说 A2A，
-若要让它出现在 WorkBuddy 的工具列表里（模型直接调用，而不是写脚本），需要再加一层
-MCP facade（stdio 或 streamable-http）包住同一个 executor —— 尚未实现。
+`dsh-a2a` 现在两种协议都在：A2A 给 agent 用，MCP 给客户端用。见
+[MCP facade](#mcp-facade让客户端把-dsh-当原生工具)。
+
+## MCP facade（让客户端把 DSH 当原生工具）
+
+同一套执行器，第二种协议：**A2A 给 agent 用，MCP 给客户端用**
+（WorkBuddy / Codex / Claude Code / Cursor / Cherry Studio / Kimi…）。
+
+| 工具 | 作用 |
+| --- | --- |
+| `dsh_task(prompt, session_id?, timeout_seconds?, json_output?)` | 跑一个任务并返回最终答复；传回 `session_id` 续接同一会话；`json_output=true` 额外返回 session / exit_code / usage |
+| `dsh_status(probe_boot?)` | 报告解析到的 launcher、profile、工作区、状态目录；`probe_boot=true` 顺带做一次 profile 预检 |
+
+工具面刻意只有两个——每个工具的 schema 每轮都要付上下文成本。
+
+**stdio（多数客户端）** —— `command` 用**工作区外的解释器**，`PYTHONPATH` 同时覆盖
+`src`、site-packages 与 pywin32 的两个目录（`mcp` 2.x 在 Windows 上 import
+`pywintypes`，而 `PYTHONPATH` 不处理 `.pth`）：
+
+```jsonc
+{"mcpServers": {"dsh": {
+  "command": "<DSH_HOME>\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe",
+  "args": ["-m", "dsh_a2a.mcp_server"],
+  "env": {"PYTHONPATH": "<项目>\\src;<项目>\\.venv\\Lib\\site-packages;<项目>\\.venv\\Lib\\site-packages\\win32;<项目>\\.venv\\Lib\\site-packages\\win32\\lib"}
+}}}
+```
+
+- Codex：`~/.codex/config.toml` 的 `[mcp_servers.dsh]` + `command`/`args`/`env`。
+- DSH 自己：`profiles\desktop\cordis.patch.yml` 追加一条 `@deepseek-ai/dsh-mcp-client`，`transport: stdio`。
+
+**streamable-http（只吃远端 URL 的客户端，如 WorkBuddy）**：
+
+```powershell
+.\start-mcp.cmd                  # 默认 http://127.0.0.1:9102/mcp
+```
+```jsonc
+// WorkBuddy: connectors-marketplace\connectors\dsh\mcp.json
+{"mcpServers": {"dsh": {"url": "http://127.0.0.1:9102/mcp"}}}
+```
+
+**验证（两条传输都真机跑过）**：
+
+```powershell
+python scripts\mcp_smoke.py --task "Reply with exactly: MCP-OK"          # stdio → MCP-OK
+python scripts\mcp_smoke.py --http http://127.0.0.1:9102/mcp --task "…"  # http  → MCP-HTTP-OK
+```
 
 ## 协议映射
 
